@@ -1,0 +1,1 @@
+# karcimsa-mobile-config
