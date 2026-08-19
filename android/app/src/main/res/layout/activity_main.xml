@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/karcimsa_bg">
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh" android:layout_width="match_parent" android:layout_height="match_parent">
+        <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="match_parent" android:overScrollMode="never" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    <LinearLayout android:id="@+id/statusPanel" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:gravity="center" android:padding="28dp" android:background="@color/karcimsa_bg">
+        <ProgressBar android:id="@+id/progressBar" android:layout_width="42dp" android:layout_height="42dp" />
+        <TextView android:id="@+id/statusTitle" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="18dp" android:text="Sunucu bağlantısı kuruluyor" android:textColor="@color/karcimsa_text" android:textStyle="bold" android:textSize="18sp" />
+        <TextView android:id="@+id/statusText" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:gravity="center" android:text="Güncel KARÇİMSA adresi alınıyor..." android:textColor="@color/karcimsa_muted" android:textSize="13sp" />
+        <Button android:id="@+id/retryButton" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="18dp" android:text="Tekrar Dene" android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>
