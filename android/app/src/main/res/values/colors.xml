@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="karcimsa_bg">#08131E</color>
+    <color name="karcimsa_blue">#2DA7FF</color>
+    <color name="karcimsa_text">#EAF3F8</color>
+    <color name="karcimsa_muted">#8297A6</color>
+</resources>
