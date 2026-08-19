@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.KarcimsaMobile" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/karcimsa_bg</item>
+        <item name="android:navigationBarColor">@color/karcimsa_bg</item>
+        <item name="android:windowBackground">@color/karcimsa_bg</item>
+        <item name="colorPrimary">@color/karcimsa_blue</item>
+        <item name="colorOnPrimary">@color/karcimsa_text</item>
+    </style>
+</resources>
