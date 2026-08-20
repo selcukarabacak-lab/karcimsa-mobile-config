@@ -36,12 +36,14 @@ class MainActivity : AppCompatActivity() {
     private var currentPanelUrl: String? = null
     private var initialPageLoaded = false
     private var reconnectJob: Job? = null
+    private var mainFrameFailed = false
 
     companion object {
         const val VEHICLE_CHANNEL_ID = "karcimsa_vehicle_alerts"
         const val FCM_TOPIC = "karcimsa_ops"
         private const val NOTIFICATION_PERMISSION_REQUEST = 1101
-        private const val RECONNECT_DELAY_MS = 4000L
+        private const val RECONNECT_CHECK_MS = 6000L
+        private const val SAME_URL_RETRY_MS = 20000L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,17 +59,20 @@ class MainActivity : AppCompatActivity() {
         binding.webView.clearCache(true)
         binding.webView.clearHistory()
 
-        binding.swipeRefresh.setOnRefreshListener { resolveAndOpenPanel(true, false) }
+        binding.swipeRefresh.setOnRefreshListener {
+            refreshRemoteConfigAndPage(forceReload = true, showLoading = false)
+        }
         binding.retryButton.setOnClickListener {
             reconnectJob?.cancel()
-            resolveAndOpenPanel(true, true)
+            refreshRemoteConfigAndPage(forceReload = true, showLoading = true)
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (binding.webView.canGoBack()) binding.webView.goBack() else finish()
             }
         })
-        resolveAndOpenPanel()
+
+        openFastThenRefreshConfig()
     }
 
     private fun createVehicleNotificationChannel() {
@@ -127,14 +132,18 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webChromeClient = WebChromeClient()
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                mainFrameFailed = false
                 binding.swipeRefresh.isRefreshing = true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 initialPageLoaded = true
                 binding.swipeRefresh.isRefreshing = false
-                reconnectJob?.cancel()
-                binding.statusPanel.visibility = View.GONE
+
+                if (!mainFrameFailed) {
+                    reconnectJob?.cancel()
+                    binding.statusPanel.visibility = View.GONE
+                }
             }
 
             override fun onReceivedError(
@@ -144,6 +153,7 @@ class MainActivity : AppCompatActivity() {
             ) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
+                    mainFrameFailed = true
                     scheduleReconnect()
                 }
             }
@@ -155,9 +165,29 @@ class MainActivity : AppCompatActivity() {
             ) {
                 super.onReceivedHttpError(view, request, errorResponse)
                 if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 0) >= 500) {
+                    mainFrameFailed = true
                     scheduleReconnect()
                 }
             }
+        }
+    }
+
+    private fun openFastThenRefreshConfig() {
+        val cached = prefs.getString("last_working_url", null)
+
+        if (!cached.isNullOrBlank()) {
+            currentPanelUrl = cached
+            loadFreshUrl(cached)
+            lifecycleScope.launch {
+                val remote = fetchRemotePanelUrl()
+                if (!remote.isNullOrBlank() && remote != currentPanelUrl) {
+                    prefs.edit().putString("last_working_url", remote).apply()
+                    currentPanelUrl = remote
+                    loadFreshUrl(remote)
+                }
+            }
+        } else {
+            refreshRemoteConfigAndPage(forceReload = true, showLoading = true)
         }
     }
 
@@ -166,22 +196,35 @@ class MainActivity : AppCompatActivity() {
         if (reconnectJob?.isActive == true) return
 
         binding.swipeRefresh.isRefreshing = false
-        binding.statusTitle.text = "Bağlantı yenileniyor"
-        binding.statusText.text = "Cloudflare tüneli kontrol ediliyor. Güncel adres otomatik alınacak..."
+        binding.statusTitle.text = "Bağlantı kontrol ediliyor"
+        binding.statusText.text = "Sunucu kısa süreli yanıt vermedi. Adres değişikliği arka planda kontrol ediliyor..."
         binding.progressBar.visibility = View.VISIBLE
-        binding.retryButton.visibility = View.GONE
+        binding.retryButton.visibility = View.VISIBLE
         binding.statusPanel.visibility = View.VISIBLE
 
         reconnectJob = lifecycleScope.launch {
-            while (true) {
-                delay(RECONNECT_DELAY_MS)
+            var sameUrlWait = 0L
+
+            while (!isFinishing && !isDestroyed) {
+                delay(RECONNECT_CHECK_MS)
+
                 val remote = fetchRemotePanelUrl()
-                if (!remote.isNullOrBlank()) {
-                    currentPanelUrl = remote
+                if (!remote.isNullOrBlank() && remote != currentPanelUrl) {
                     prefs.edit().putString("last_working_url", remote).apply()
+                    currentPanelUrl = remote
                     binding.webView.clearCache(true)
                     loadFreshUrl(remote)
                     return@launch
+                }
+
+                sameUrlWait += RECONNECT_CHECK_MS
+                if (sameUrlWait >= SAME_URL_RETRY_MS) {
+                    val current = currentPanelUrl
+                    if (!current.isNullOrBlank()) {
+                        sameUrlWait = 0L
+                        loadFreshUrl(current)
+                        return@launch
+                    }
                 }
             }
         }
@@ -193,13 +236,13 @@ class MainActivity : AppCompatActivity() {
         binding.webView.loadUrl(freshTarget)
     }
 
-    private fun resolveAndOpenPanel(force: Boolean = false, showLoading: Boolean = true) {
+    private fun refreshRemoteConfigAndPage(forceReload: Boolean, showLoading: Boolean) {
         if (showLoading && !initialPageLoaded) showLoading()
 
         lifecycleScope.launch {
             val remote = fetchRemotePanelUrl()
-            val fallback = prefs.getString("last_working_url", null)
-            val target = remote ?: fallback
+            val cached = prefs.getString("last_working_url", null)
+            val target = remote ?: cached
 
             if (target.isNullOrBlank()) {
                 showError()
@@ -209,12 +252,14 @@ class MainActivity : AppCompatActivity() {
 
             prefs.edit().putString("last_working_url", target).apply()
 
-            if (force || currentPanelUrl != target || binding.webView.url.isNullOrBlank()) {
-                currentPanelUrl = target
-                loadFreshUrl(target)
-            } else {
+            val changed = target != currentPanelUrl
+            currentPanelUrl = target
+
+            if (forceReload || changed || binding.webView.url.isNullOrBlank()) {
                 binding.webView.clearCache(true)
                 loadFreshUrl(target)
+            } else {
+                binding.swipeRefresh.isRefreshing = false
             }
         }
     }
@@ -222,12 +267,12 @@ class MainActivity : AppCompatActivity() {
     private suspend fun fetchRemotePanelUrl(): String? = withContext(Dispatchers.IO) {
         try {
             val c = URL("$configUrl?ts=${System.currentTimeMillis()}").openConnection() as HttpURLConnection
-            c.connectTimeout = 8000
-            c.readTimeout = 8000
+            c.connectTimeout = 3500
+            c.readTimeout = 3500
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.1")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.2")
 
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
@@ -241,7 +286,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLoading() {
         binding.statusTitle.text = "Sunucu bağlantısı kuruluyor"
-        binding.statusText.text = "Güncel KARÇİMSA adresi alınıyor..."
+        binding.statusText.text = "KARÇİMSA paneli açılıyor..."
         binding.progressBar.visibility = View.VISIBLE
         binding.retryButton.visibility = View.GONE
         binding.statusPanel.visibility = View.VISIBLE
@@ -249,7 +294,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError() {
         binding.statusTitle.text = "Bağlantı kurulamadı"
-        binding.statusText.text = "Sunucu geçici olarak erişilemiyor. Uygulama otomatik yeniden bağlanmayı deneyecek."
+        binding.statusText.text = "Sunucu geçici olarak erişilemiyor. Uygulama arka planda tekrar deneyecek."
         binding.progressBar.visibility = View.VISIBLE
         binding.retryButton.visibility = View.VISIBLE
         binding.statusPanel.visibility = View.VISIBLE
