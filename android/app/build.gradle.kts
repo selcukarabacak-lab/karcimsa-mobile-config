@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "com.karcimsa.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -36,4 +37,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     implementation("com.google.android.material:material:1.12.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }
