@@ -1,13 +1,24 @@
 package com.karcimsa.mobile
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.media.AudioAttributes
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.webkit.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.messaging.FirebaseMessaging
 import com.karcimsa.mobile.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -24,23 +35,76 @@ class MainActivity : AppCompatActivity() {
     private var currentPanelUrl: String? = null
     private var initialPageLoaded = false
 
+    companion object {
+        const val VEHICLE_CHANNEL_ID = "karcimsa_vehicle_alerts"
+        const val FCM_TOPIC = "karcimsa_ops"
+        private const val NOTIFICATION_PERMISSION_REQUEST = 1101
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        createVehicleNotificationChannel()
+        requestNotificationPermissionIfNeeded()
+        subscribeToPushTopic()
         setupWebView()
 
-        // KARÇİMSA web arayüzündeki app.js/style.css değişiklikleri
-        // uygulamada eski cache'ten gelmesin.
         binding.webView.clearCache(true)
         binding.webView.clearHistory()
 
         binding.swipeRefresh.setOnRefreshListener { resolveAndOpenPanel(true, false) }
         binding.retryButton.setOnClickListener { resolveAndOpenPanel(true, true) }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { if (binding.webView.canGoBack()) binding.webView.goBack() else finish() }
+            override fun handleOnBackPressed() {
+                if (binding.webView.canGoBack()) binding.webView.goBack() else finish()
+            }
         })
         resolveAndOpenPanel()
+    }
+
+    private fun createVehicleNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val soundUri = Uri.parse(
+            "android.resource://$packageName/${R.raw.karcimsa_vehicle_alert}"
+        )
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        val channel = NotificationChannel(
+            VEHICLE_CHANNEL_ID,
+            "KARÇİMSA Araç Bildirimleri",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "CEM I ve satış aracı giriş bildirimleri"
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 90, 55, 120)
+            setSound(soundUri, audioAttributes)
+        }
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST
+            )
+        }
+    }
+
+    private fun subscribeToPushTopic() {
+        FirebaseMessaging.getInstance()
+            .subscribeToTopic(FCM_TOPIC)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -83,8 +147,6 @@ class MainActivity : AppCompatActivity() {
             if (target.isNullOrBlank()) { showError(); return@launch }
             prefs.edit().putString("last_working_url", target).apply()
 
-            // Her yüklemede cache-busting query ekle. Böylece web tarafındaki
-            // HTML/JS/CSS güncellemeleri APK yeniden kurulmadan hemen görünür.
             val separator = if (target.contains("?")) "&" else "?"
             val freshTarget = "$target${separator}app_ts=${System.currentTimeMillis()}"
 
@@ -101,14 +163,20 @@ class MainActivity : AppCompatActivity() {
     private suspend fun fetchRemotePanelUrl(): String? = withContext(Dispatchers.IO) {
         try {
             val c = URL("$configUrl?ts=${System.currentTimeMillis()}").openConnection() as HttpURLConnection
-            c.connectTimeout = 8000; c.readTimeout = 8000; c.useCaches = false
+            c.connectTimeout = 8000
+            c.readTimeout = 8000
+            c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
             c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1")
             c.inputStream.bufferedReader().use {
-                JSONObject(it.readText()).optString("url").trim().takeIf { u -> u.startsWith("https://") && u.contains(".trycloudflare.com") }
+                JSONObject(it.readText()).optString("url").trim().takeIf { u ->
+                    u.startsWith("https://") && u.contains(".trycloudflare.com")
+                }
             }
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun showLoading() {
@@ -118,6 +186,7 @@ class MainActivity : AppCompatActivity() {
         binding.retryButton.visibility = View.GONE
         binding.statusPanel.visibility = View.VISIBLE
     }
+
     private fun showError() {
         binding.statusTitle.text = "Bağlantı kurulamadı"
         binding.statusText.text = "İnternet bağlantısını ve KARÇİMSA sunucusunu kontrol edip tekrar deneyin."
