@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "626472745818",
+    "project_id": "karcimsa-silo-operasyon",
+    "storage_bucket": "karcimsa-silo-operasyon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626472745818:android:eb8771814749548c751163",
+        "android_client_info": {
+          "package_name": "com.karcimsa.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8KUE0FLkO3ZqgJjc_vLE_Mk93FgvLXq0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
