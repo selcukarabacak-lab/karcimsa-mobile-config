@@ -29,6 +29,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupWebView()
+
+        // KARÇİMSA web arayüzündeki app.js/style.css değişiklikleri
+        // uygulamada eski cache'ten gelmesin.
+        binding.webView.clearCache(true)
+        binding.webView.clearHistory()
+
         binding.swipeRefresh.setOnRefreshListener { resolveAndOpenPanel(true, false) }
         binding.retryButton.setOnClickListener { resolveAndOpenPanel(true, true) }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -46,6 +52,7 @@ class MainActivity : AppCompatActivity() {
             loadWithOverviewMode = true
             useWideViewPort = true
             mediaPlaybackRequiresUserGesture = false
+            cacheMode = WebSettings.LOAD_NO_CACHE
         }
         binding.webView.webChromeClient = WebChromeClient()
         binding.webView.webViewClient = object : WebViewClient() {
@@ -75,10 +82,19 @@ class MainActivity : AppCompatActivity() {
             val target = remote ?: fallback
             if (target.isNullOrBlank()) { showError(); return@launch }
             prefs.edit().putString("last_working_url", target).apply()
+
+            // Her yüklemede cache-busting query ekle. Böylece web tarafındaki
+            // HTML/JS/CSS güncellemeleri APK yeniden kurulmadan hemen görünür.
+            val separator = if (target.contains("?")) "&" else "?"
+            val freshTarget = "$target${separator}app_ts=${System.currentTimeMillis()}"
+
             if (force || currentPanelUrl != target || binding.webView.url.isNullOrBlank()) {
                 currentPanelUrl = target
-                binding.webView.loadUrl(target)
-            } else binding.webView.reload()
+                binding.webView.loadUrl(freshTarget)
+            } else {
+                binding.webView.clearCache(true)
+                binding.webView.loadUrl(freshTarget)
+            }
         }
     }
 
@@ -86,7 +102,9 @@ class MainActivity : AppCompatActivity() {
         try {
             val c = URL("$configUrl?ts=${System.currentTimeMillis()}").openConnection() as HttpURLConnection
             c.connectTimeout = 8000; c.readTimeout = 8000; c.useCaches = false
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.0")
+            c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
+            c.setRequestProperty("Pragma", "no-cache")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1")
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u -> u.startsWith("https://") && u.contains(".trycloudflare.com") }
             }
