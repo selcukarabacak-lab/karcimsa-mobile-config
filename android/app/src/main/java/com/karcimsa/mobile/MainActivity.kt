@@ -1,6 +1,9 @@
 package com.karcimsa.mobile
 
 import android.Manifest
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -13,6 +16,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.webkit.*
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -38,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var initialPageLoaded = false
     private var reconnectJob: Job? = null
     private var mainFrameFailed = false
+    private var truckAnimator: AnimatorSet? = null
 
     private var pendingFocusPlate: String? = null
     private var pendingFocusEventType: String? = null
@@ -50,7 +55,7 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_PLATE = "plate"
         const val EXTRA_START_TIME = "start_time"
         private const val NOTIFICATION_PERMISSION_REQUEST = 1101
-        private const val RECONNECT_CHECK_MS = 8000L
+        private const val RECONNECT_CHECK_MS = 6000L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,10 +71,13 @@ class MainActivity : AppCompatActivity() {
 
         binding.webView.clearCache(true)
         binding.webView.clearHistory()
+        binding.swipeRefresh.visibility = View.INVISIBLE
+        binding.webView.visibility = View.INVISIBLE
 
         binding.swipeRefresh.setOnRefreshListener {
+            binding.swipeRefresh.isRefreshing = false
             reconnectJob?.cancel()
-            resolveHealthyPanel(showLoading = false)
+            resolveHealthyPanel(showLoading = true)
         }
         binding.retryButton.setOnClickListener {
             reconnectJob?.cancel()
@@ -81,7 +89,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        resolveHealthyPanel(showLoading = true)
+        showLoading()
+        resolveHealthyPanel(showLoading = false)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -92,7 +101,7 @@ class MainActivity : AppCompatActivity() {
         if (initialPageLoaded) {
             focusNotificationTarget()
         } else {
-            resolveHealthyPanel(showLoading = false)
+            resolveHealthyPanel(showLoading = true)
         }
     }
 
@@ -111,9 +120,7 @@ class MainActivity : AppCompatActivity() {
     private fun createVehicleNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
-        val soundUri = Uri.parse(
-            "android.resource://$packageName/${R.raw.karcimsa_vehicle_alert}"
-        )
+        val soundUri = Uri.parse("android.resource://$packageName/${R.raw.karcimsa_vehicle_alert}")
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -150,6 +157,42 @@ class MainActivity : AppCompatActivity() {
         FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC)
     }
 
+    private fun startTruckAnimation() {
+        if (truckAnimator?.isRunning == true) return
+
+        val road = ObjectAnimator.ofFloat(binding.truckContainer, View.TRANSLATION_X, -42f, 42f).apply {
+            duration = 1250
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
+        }
+
+        val bounce = ObjectAnimator.ofFloat(binding.truckContainer, View.TRANSLATION_Y, -3f, 3f).apply {
+            duration = 330
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+        }
+
+        val glow = ObjectAnimator.ofFloat(binding.truckContainer, View.ALPHA, 0.86f, 1f).apply {
+            duration = 650
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+        }
+
+        truckAnimator = AnimatorSet().apply {
+            playTogether(road, bounce, glow)
+            start()
+        }
+    }
+
+    private fun stopTruckAnimation() {
+        truckAnimator?.cancel()
+        truckAnimator = null
+        binding.truckContainer.translationX = 0f
+        binding.truckContainer.translationY = 0f
+        binding.truckContainer.alpha = 1f
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         with(binding.webView.settings) {
@@ -166,7 +209,10 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 mainFrameFailed = false
-                binding.swipeRefresh.isRefreshing = true
+                binding.swipeRefresh.isRefreshing = false
+                binding.swipeRefresh.visibility = View.INVISIBLE
+                binding.webView.visibility = View.INVISIBLE
+                showLoading()
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -174,7 +220,10 @@ class MainActivity : AppCompatActivity() {
                 if (!mainFrameFailed && !url.isNullOrBlank() && url != "about:blank") {
                     initialPageLoaded = true
                     reconnectJob?.cancel()
+                    stopTruckAnimation()
                     binding.statusPanel.visibility = View.GONE
+                    binding.swipeRefresh.visibility = View.VISIBLE
+                    binding.webView.visibility = View.VISIBLE
                     focusNotificationTarget()
                 }
             }
@@ -207,7 +256,6 @@ class MainActivity : AppCompatActivity() {
 
         val eventType = pendingFocusEventType.orEmpty()
         val startTime = pendingFocusStartTime.orEmpty()
-
         val plateJs = JSONObject.quote(plate)
         val eventJs = JSONObject.quote(eventType)
         val startJs = JSONObject.quote(startTime)
@@ -218,68 +266,40 @@ class MainActivity : AppCompatActivity() {
               const eventType = $eventJs;
               const startTime = $startJs;
               let tries = 0;
-
-              function norm(v){
-                return String(v || '').replace(/\s+/g,' ').trim().toUpperCase();
-              }
-
+              function norm(v){ return String(v || '').replace(/\s+/g,' ').trim().toUpperCase(); }
               function findTarget(){
                 tries++;
                 const target = norm(targetPlate);
-
-                const preferredSelectors = eventType === 'cem1_entry'
-                  ? ['#trucks .truck', '.truck', '[class*="truck"]', 'tr', '[class*="card"]']
-                  : ['[class*="waiting"]', '[class*="truck"]', '.truck', 'tr', '[class*="card"]'];
-
-                let candidates = [];
-                preferredSelectors.forEach(function(sel){
-                  try { candidates = candidates.concat(Array.from(document.querySelectorAll(sel))); } catch(e) {}
-                });
-
-                if (!candidates.length) {
-                  candidates = Array.from(document.querySelectorAll('div,li,tr'));
-                }
-
-                const seen = new Set();
-                candidates = candidates.filter(function(el){
-                  if (!el || seen.has(el)) return false;
+                const selectors = eventType === 'cem1_entry'
+                  ? ['#trucks .truck','.truck','[class*="truck"]','tr','[class*="card"]']
+                  : ['[class*="waiting"]','[class*="truck"]','.truck','tr','[class*="card"]'];
+                let candidates=[];
+                selectors.forEach(function(sel){ try { candidates=candidates.concat(Array.from(document.querySelectorAll(sel))); } catch(e){} });
+                if(!candidates.length) candidates=Array.from(document.querySelectorAll('div,li,tr'));
+                const seen=new Set();
+                candidates=candidates.filter(function(el){
+                  if(!el || seen.has(el)) return false;
                   seen.add(el);
                   return norm(el.innerText).includes(target);
                 });
-
-                let el = candidates.find(function(x){
-                  const txt = norm(x.innerText);
+                let el=candidates.find(function(x){
+                  const txt=norm(x.innerText);
                   return startTime ? txt.includes(norm(startTime)) : true;
                 }) || candidates[0];
-
-                if (!el) {
-                  if (tries < 14) setTimeout(findTarget, 500);
-                  return;
-                }
-
-                const row = el.closest('.truck, tr, [class*="waiting"], [class*="vehicle"], [class*="card"]') || el;
-                row.scrollIntoView({behavior:'smooth', block:'center'});
-
-                const oldOutline = row.style.outline;
-                const oldShadow = row.style.boxShadow;
-                const oldTransition = row.style.transition;
-                row.style.transition = 'outline .2s ease, box-shadow .2s ease';
-                row.style.outline = '3px solid rgba(255,193,7,.95)';
-                row.style.boxShadow = '0 0 0 6px rgba(255,193,7,.18), 0 8px 28px rgba(0,0,0,.35)';
-
-                setTimeout(function(){
-                  row.style.outline = oldOutline;
-                  row.style.boxShadow = oldShadow;
-                  row.style.transition = oldTransition;
-                }, 3500);
+                if(!el){ if(tries<14) setTimeout(findTarget,500); return; }
+                const row=el.closest('.truck,tr,[class*="waiting"],[class*="vehicle"],[class*="card"]') || el;
+                row.scrollIntoView({behavior:'smooth',block:'center'});
+                const oo=row.style.outline, os=row.style.boxShadow, ot=row.style.transition;
+                row.style.transition='outline .2s ease, box-shadow .2s ease';
+                row.style.outline='3px solid rgba(255,193,7,.95)';
+                row.style.boxShadow='0 0 0 6px rgba(255,193,7,.18),0 8px 28px rgba(0,0,0,.35)';
+                setTimeout(function(){ row.style.outline=oo; row.style.boxShadow=os; row.style.transition=ot; },3500);
               }
-
-              setTimeout(findTarget, 650);
+              setTimeout(findTarget,650);
             })();
         """.trimIndent()
 
         binding.webView.evaluateJavascript(script, null)
-
         pendingFocusPlate = null
         pendingFocusEventType = null
         pendingFocusStartTime = null
@@ -287,6 +307,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleMainFrameFailure() {
         mainFrameFailed = true
+        initialPageLoaded = false
+        binding.swipeRefresh.visibility = View.INVISIBLE
+        binding.webView.visibility = View.INVISIBLE
         binding.webView.stopLoading()
         binding.webView.loadUrl("about:blank")
         showReconnecting()
@@ -304,13 +327,14 @@ class MainActivity : AppCompatActivity() {
             if (!cached.isNullOrBlank()) candidates.add(cached)
 
             val healthy = candidates.firstOrNull { isPanelHealthy(it) }
-
             if (healthy != null) {
                 prefs.edit().putString("last_working_url", healthy).apply()
                 currentPanelUrl = healthy
                 binding.webView.clearCache(true)
                 loadFreshUrl(healthy)
             } else {
+                binding.swipeRefresh.visibility = View.INVISIBLE
+                binding.webView.visibility = View.INVISIBLE
                 binding.webView.stopLoading()
                 binding.webView.loadUrl("about:blank")
                 showReconnecting()
@@ -326,7 +350,6 @@ class MainActivity : AppCompatActivity() {
         reconnectJob = lifecycleScope.launch {
             while (!isFinishing && !isDestroyed) {
                 delay(RECONNECT_CHECK_MS)
-
                 val remote = fetchRemotePanelUrl()
                 val cached = prefs.getString("last_working_url", null)
                 val candidates = linkedSetOf<String>()
@@ -346,6 +369,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadFreshUrl(target: String) {
+        showLoading()
+        binding.swipeRefresh.visibility = View.INVISIBLE
+        binding.webView.visibility = View.INVISIBLE
         val separator = if (target.contains("?")) "&" else "?"
         val freshTarget = "$target${separator}app_ts=${System.currentTimeMillis()}"
         binding.webView.loadUrl(freshTarget)
@@ -360,7 +386,7 @@ class MainActivity : AppCompatActivity() {
             c.instanceFollowRedirects = true
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.4")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.5")
             val code = c.responseCode
             c.disconnect()
             code in 200..299
@@ -377,8 +403,7 @@ class MainActivity : AppCompatActivity() {
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.4")
-
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.5")
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
                     u.startsWith("https://") && u.contains(".trycloudflare.com")
@@ -390,24 +415,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLoading() {
-        binding.statusTitle.text = "Sunucu bağlantısı kuruluyor"
-        binding.statusText.text = "KARÇİMSA paneli kontrol ediliyor..."
+        binding.swipeRefresh.isRefreshing = false
+        binding.swipeRefresh.visibility = View.INVISIBLE
+        binding.webView.visibility = View.INVISIBLE
+        binding.statusTitle.text = "Sunucuya Bağlanırken Lütfen Bekleyin..."
+        binding.statusText.text = "KARÇİMSA sunucusunun güvenli bağlantısı hazırlanıyor."
+        binding.waitHint.text = "Bu işlem 1-2 dakika sürebilir."
         binding.progressBar.visibility = View.VISIBLE
         binding.retryButton.visibility = View.GONE
         binding.statusPanel.visibility = View.VISIBLE
+        startTruckAnimation()
     }
 
     private fun showReconnecting() {
         binding.swipeRefresh.isRefreshing = false
-        binding.statusTitle.text = "Sunucu yeniden bağlanıyor"
-        binding.statusText.text = "Cloudflare bağlantısı geçici olarak kapalı. Yeni bağlantı hazır olduğunda uygulama otomatik açılacak."
+        binding.swipeRefresh.visibility = View.INVISIBLE
+        binding.webView.visibility = View.INVISIBLE
+        binding.statusTitle.text = "Sunucuya Bağlanırken Lütfen Bekleyin..."
+        binding.statusText.text = "Cloudflare bağlantısı hazırlanıyor ve güncel sunucu adresi kontrol ediliyor."
+        binding.waitHint.text = "Bu işlem 1-2 dakika sürebilir."
         binding.progressBar.visibility = View.VISIBLE
-        binding.retryButton.visibility = View.VISIBLE
+        binding.retryButton.visibility = View.GONE
         binding.statusPanel.visibility = View.VISIBLE
+        startTruckAnimation()
     }
 
     override fun onDestroy() {
         reconnectJob?.cancel()
+        stopTruckAnimation()
         super.onDestroy()
     }
 }
