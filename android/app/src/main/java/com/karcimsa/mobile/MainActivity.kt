@@ -42,9 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var currentPanelUrl: String? = null
     private var initialPageLoaded = false
     private var reconnectJob: Job? = null
-    private var autoRefreshJob: Job? = null
     private var mainFrameFailed = false
-    private var silentReload = false
     private var truckAnimator: AnimatorSet? = null
 
     private var pendingFocusPlate: String? = null
@@ -59,7 +57,6 @@ class MainActivity : AppCompatActivity() {
         const val PREF_NOTIFY_SALES = "notify_sales"
         const val PREF_NOTIFY_CEM1 = "notify_cem1"
         const val PREF_KEEP_SCREEN_ON = "keep_screen_on"
-        const val PREF_AUTO_REFRESH_SEC = "auto_refresh_sec"
         const val PREF_FORCE_REFRESH = "force_refresh"
         const val PREF_CLEAR_CACHE = "clear_cache"
         const val EXTRA_EVENT_TYPE = "event_type"
@@ -114,13 +111,6 @@ class MainActivity : AppCompatActivity() {
         syncNotificationTopics()
         applyKeepScreenOnPreference()
         consumeMaintenanceRequests()
-        startAutoRefresh()
-    }
-
-    override fun onPause() {
-        autoRefreshJob?.cancel()
-        autoRefreshJob = null
-        super.onPause()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -161,30 +151,6 @@ class MainActivity : AppCompatActivity() {
 
         reconnectJob?.cancel()
         resolveHealthyPanel(showLoading = true)
-    }
-
-    private fun startAutoRefresh() {
-        autoRefreshJob?.cancel()
-        autoRefreshJob = null
-
-        val seconds = prefs.getInt(PREF_AUTO_REFRESH_SEC, 30)
-        if (seconds <= 0) return
-
-        autoRefreshJob = lifecycleScope.launch {
-            while (!isFinishing && !isDestroyed) {
-                delay(seconds * 1000L)
-
-                if (
-                    initialPageLoaded &&
-                    !mainFrameFailed &&
-                    binding.webView.visibility == View.VISIBLE &&
-                    binding.statusPanel.visibility != View.VISIBLE
-                ) {
-                    silentReload = true
-                    binding.webView.reload()
-                }
-            }
-        }
     }
 
     private fun captureNotificationIntent(sourceIntent: Intent?) {
@@ -303,12 +269,9 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 mainFrameFailed = false
                 binding.swipeRefresh.isRefreshing = false
-
-                if (!silentReload) {
-                    binding.swipeRefresh.visibility = View.INVISIBLE
-                    binding.webView.visibility = View.INVISIBLE
-                    showLoading()
-                }
+                binding.swipeRefresh.visibility = View.INVISIBLE
+                binding.webView.visibility = View.INVISIBLE
+                showLoading()
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -320,7 +283,6 @@ class MainActivity : AppCompatActivity() {
                     binding.statusPanel.visibility = View.GONE
                     binding.swipeRefresh.visibility = View.VISIBLE
                     binding.webView.visibility = View.VISIBLE
-                    silentReload = false
                     focusNotificationTarget()
                 }
             }
@@ -403,7 +365,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleMainFrameFailure() {
-        silentReload = false
         mainFrameFailed = true
         initialPageLoaded = false
         binding.swipeRefresh.visibility = View.INVISIBLE
@@ -467,7 +428,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadFreshUrl(target: String) {
-        silentReload = false
         showLoading()
         binding.swipeRefresh.visibility = View.INVISIBLE
         binding.webView.visibility = View.INVISIBLE
@@ -485,7 +445,7 @@ class MainActivity : AppCompatActivity() {
             c.instanceFollowRedirects = true
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.8")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.9")
             val code = c.responseCode
             c.disconnect()
             code in 200..299
@@ -502,7 +462,7 @@ class MainActivity : AppCompatActivity() {
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.8")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.9")
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
                     u.startsWith("https://") && u.contains(".trycloudflare.com")
@@ -541,7 +501,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         reconnectJob?.cancel()
-        autoRefreshJob?.cancel()
         stopTruckAnimation()
         super.onDestroy()
     }
