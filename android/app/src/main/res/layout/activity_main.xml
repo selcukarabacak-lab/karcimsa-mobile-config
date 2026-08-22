@@ -1,166 +1,194 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="@color/karcimsa_bg">
 
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefresh"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="invisible">
-
-        <WebView
-            android:id="@+id/webView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:overScrollMode="never" />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
     <LinearLayout
-        android:id="@+id/statusPanel"
+        android:id="@+id/appHeader"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:paddingLeft="26dp"
-        android:paddingRight="26dp"
-        android:paddingTop="30dp"
-        android:paddingBottom="30dp"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="8dp"
         android:background="@color/karcimsa_bg">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:text="KARÇİMSA"
             android:textColor="@color/karcimsa_text"
             android:textStyle="bold"
-            android:textSize="30sp"
-            android:letterSpacing="0.08"
-            android:shadowColor="@color/karcimsa_blue"
-            android:shadowDx="0"
-            android:shadowDy="0"
-            android:shadowRadius="10" />
+            android:textSize="14sp"
+            android:letterSpacing="0.04" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:text="Güven • Kalite • Zamanında Teslimat"
-            android:textColor="@color/karcimsa_blue"
-            android:textSize="11sp" />
-
-        <FrameLayout
-            android:id="@+id/truckStage"
-            android:layout_width="match_parent"
-            android:layout_height="128dp"
-            android:layout_marginTop="22dp"
-            android:clipChildren="false"
-            android:clipToPadding="false">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="2dp"
-                android:layout_gravity="bottom"
-                android:layout_marginBottom="24dp"
-                android:background="@color/karcimsa_blue"
-                android:alpha="0.45" />
-
-            <FrameLayout
-                android:id="@+id/truckContainer"
-                android:layout_width="220dp"
-                android:layout_height="92dp"
-                android:layout_gravity="center">
-
-                <ImageView
-                    android:layout_width="220dp"
-                    android:layout_height="92dp"
-                    android:src="@drawable/karcimsa_silobas"
-                    android:contentDescription="KARÇİMSA silobas" />
-
-                <TextView
-                    android:layout_width="108dp"
-                    android:layout_height="22dp"
-                    android:layout_marginLeft="29dp"
-                    android:layout_marginTop="29dp"
-                    android:gravity="center"
-                    android:text="KARÇİMSA"
-                    android:textColor="#174EA6"
-                    android:textStyle="bold"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.03" />
-            </FrameLayout>
-        </FrameLayout>
-
-        <TextView
-            android:id="@+id/statusTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="Sunucuya Bağlanırken Lütfen Bekleyin..."
-            android:textColor="@color/karcimsa_text"
-            android:textStyle="bold"
-            android:textSize="19sp" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
-            android:gravity="center"
-            android:text="KARÇİMSA sunucusunun güvenli bağlantısı hazırlanıyor."
-            android:textColor="@color/karcimsa_muted"
-            android:textSize="13sp"
-            android:lineSpacingExtra="3dp" />
-
-        <TextView
-            android:id="@+id/waitHint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="15dp"
-            android:gravity="center"
-            android:text="Bu işlem 1-2 dakika sürebilir."
-            android:textColor="@color/karcimsa_blue"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
-            android:gravity="center"
-            android:text="Bağlantı hazır olduğunda uygulama otomatik olarak açılacaktır."
-            android:textColor="@color/karcimsa_muted"
-            android:textSize="11sp" />
-
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="220dp"
-            android:layout_height="5dp"
-            android:layout_marginTop="20dp"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/karcimsa_blue" />
-
-        <Button
-            android:id="@+id/retryButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Tekrar Dene"
-            android:visibility="gone" />
+        <ImageButton
+            android:id="@+id/settingsButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_tune"
+            android:contentDescription="Ayarlar"
+            android:padding="8dp"
+            android:tint="@null" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/settingsButton"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="14dp"
-        android:text="⚙"
-        android:textSize="22sp"
-        android:contentDescription="Ayarlar" />
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-</FrameLayout>
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="invisible">
+
+            <WebView
+                android:id="@+id/webView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:overScrollMode="never" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <LinearLayout
+            android:id="@+id/statusPanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingLeft="26dp"
+            android:paddingRight="26dp"
+            android:paddingTop="30dp"
+            android:paddingBottom="30dp"
+            android:background="@color/karcimsa_bg">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="KARÇİMSA"
+                android:textColor="@color/karcimsa_text"
+                android:textStyle="bold"
+                android:textSize="30sp"
+                android:letterSpacing="0.08"
+                android:shadowColor="@color/karcimsa_blue"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="10" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Güven • Kalite • Zamanında Teslimat"
+                android:textColor="@color/karcimsa_blue"
+                android:textSize="11sp" />
+
+            <FrameLayout
+                android:id="@+id/truckStage"
+                android:layout_width="match_parent"
+                android:layout_height="128dp"
+                android:layout_marginTop="22dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_gravity="bottom"
+                    android:layout_marginBottom="24dp"
+                    android:background="@color/karcimsa_blue"
+                    android:alpha="0.45" />
+
+                <FrameLayout
+                    android:id="@+id/truckContainer"
+                    android:layout_width="220dp"
+                    android:layout_height="92dp"
+                    android:layout_gravity="center">
+
+                    <ImageView
+                        android:layout_width="220dp"
+                        android:layout_height="92dp"
+                        android:src="@drawable/karcimsa_silobas"
+                        android:contentDescription="KARÇİMSA silobas" />
+
+                    <TextView
+                        android:layout_width="108dp"
+                        android:layout_height="22dp"
+                        android:layout_marginLeft="29dp"
+                        android:layout_marginTop="29dp"
+                        android:gravity="center"
+                        android:text="KARÇİMSA"
+                        android:textColor="#174EA6"
+                        android:textStyle="bold"
+                        android:textSize="11sp"
+                        android:letterSpacing="0.03" />
+                </FrameLayout>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/statusTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="Sunucuya Bağlanırken Lütfen Bekleyin..."
+                android:textColor="@color/karcimsa_text"
+                android:textStyle="bold"
+                android:textSize="19sp" />
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="9dp"
+                android:gravity="center"
+                android:text="KARÇİMSA sunucusunun güvenli bağlantısı hazırlanıyor."
+                android:textColor="@color/karcimsa_muted"
+                android:textSize="13sp"
+                android:lineSpacingExtra="3dp" />
+
+            <TextView
+                android:id="@+id/waitHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
+                android:gravity="center"
+                android:text="Bu işlem 1-2 dakika sürebilir."
+                android:textColor="@color/karcimsa_blue"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:gravity="center"
+                android:text="Bağlantı hazır olduğunda uygulama otomatik olarak açılacaktır."
+                android:textColor="@color/karcimsa_muted"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="220dp"
+                android:layout_height="5dp"
+                android:layout_marginTop="20dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/karcimsa_blue" />
+
+            <Button
+                android:id="@+id/retryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Tekrar Dene"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </FrameLayout>
+
+</LinearLayout>
