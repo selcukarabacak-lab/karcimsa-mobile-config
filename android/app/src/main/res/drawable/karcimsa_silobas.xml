@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="220dp"
+    android:height="92dp"
+    android:viewportWidth="220"
+    android:viewportHeight="92">
+
+    <!-- trailer shadow -->
+    <path android:fillColor="#22000000" android:pathData="M12,70 L190,70 L198,78 L20,78 Z" />
+
+    <!-- silo tank -->
+    <path android:fillColor="#F5F8FB" android:strokeColor="#2DA7FF" android:strokeWidth="2"
+        android:pathData="M20,29 C20,19 29,13 42,13 L126,13 C143,13 153,24 153,40 L153,58 L25,58 C17,58 13,52 13,45 C13,38 15,32 20,29 Z" />
+    <path android:fillColor="#DCE8F2" android:pathData="M27,19 C42,15 101,15 123,17 C133,18 140,22 145,28 L30,28 Z" />
+    <path android:fillColor="#2DA7FF" android:pathData="M23,50 L151,50 L151,58 L23,58 Z" />
+
+    <!-- chassis -->
+    <path android:fillColor="#263746" android:pathData="M17,58 L188,58 L188,68 L17,68 Z" />
+
+    <!-- cab -->
+    <path android:fillColor="#F8FAFC" android:strokeColor="#2DA7FF" android:strokeWidth="2"
+        android:pathData="M153,31 L184,31 C194,31 201,38 204,48 L208,60 L208,68 L153,68 Z" />
+    <path android:fillColor="#15354D" android:pathData="M164,36 L184,36 C190,36 194,40 196,47 L166,47 Z" />
+    <path android:fillColor="#1D79B7" android:pathData="M198,49 L205,55 L207,61 L198,61 Z" />
+    <path android:fillColor="#2DA7FF" android:pathData="M156,56 L201,56 L203,61 L156,61 Z" />
+    <path android:fillColor="#A8BBC9" android:pathData="M182,32 L188,32 L188,54 L182,54 Z" />
+
+    <!-- bumper/light -->
+    <path android:fillColor="#203241" android:pathData="M190,63 L211,63 L211,70 L187,70 Z" />
+    <path android:fillColor="#E8F7FF" android:pathData="M201,54 L207,54 L208,58 L202,58 Z" />
+
+    <!-- tank rails -->
+    <path android:fillColor="#7E96A8" android:pathData="M35,10 L125,10 L125,13 L35,13 Z" />
+    <path android:fillColor="#7E96A8" android:pathData="M45,7 L48,7 L48,14 L45,14 Z" />
+    <path android:fillColor="#7E96A8" android:pathData="M112,7 L115,7 L115,14 L112,14 Z" />
+
+    <!-- wheels -->
+    <path android:fillColor="#121B22" android:pathData="M35,61 A13,13 0,1 0,61 61 A13,13 0,1 0,35 61" />
+    <path android:fillColor="#9DB0BD" android:pathData="M42,61 A6,6 0,1 0,54 61 A6,6 0,1 0,42 61" />
+    <path android:fillColor="#121B22" android:pathData="M70,61 A13,13 0,1 0,96 61 A13,13 0,1 0,70 61" />
+    <path android:fillColor="#9DB0BD" android:pathData="M77,61 A6,6 0,1 0,89 61 A6,6 0,1 0,77 61" />
+    <path android:fillColor="#121B22" android:pathData="M163,61 A13,13 0,1 0,189 61 A13,13 0,1 0,163 61" />
+    <path android:fillColor="#9DB0BD" android:pathData="M170,61 A6,6 0,1 0,182 61 A6,6 0,1 0,170 61" />
+
+    <!-- stylized K mark on cab -->
+    <path android:fillColor="#174EA6" android:pathData="M161,50 L165,50 L165,55 L170,50 L175,50 L169,56 L175,62 L170,62 L165,57 L165,62 L161,62 Z" />
+</vector>
