@@ -50,7 +50,11 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val VEHICLE_CHANNEL_ID = "karcimsa_vehicle_alerts"
-        const val FCM_TOPIC = "karcimsa_ops"
+        const val OLD_FCM_TOPIC = "karcimsa_ops"
+        const val FCM_TOPIC_SALES = "karcimsa_sales"
+        const val FCM_TOPIC_CEM1 = "karcimsa_cem1"
+        const val PREF_NOTIFY_SALES = "notify_sales"
+        const val PREF_NOTIFY_CEM1 = "notify_cem1"
         const val EXTRA_EVENT_TYPE = "event_type"
         const val EXTRA_PLATE = "plate"
         const val EXTRA_START_TIME = "start_time"
@@ -66,8 +70,12 @@ class MainActivity : AppCompatActivity() {
         captureNotificationIntent(intent)
         createVehicleNotificationChannel()
         requestNotificationPermissionIfNeeded()
-        subscribeToPushTopic()
+        syncNotificationTopics()
         setupWebView()
+
+        binding.settingsButton.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
 
         binding.webView.clearCache(true)
         binding.webView.clearHistory()
@@ -91,6 +99,11 @@ class MainActivity : AppCompatActivity() {
 
         showLoading()
         resolveHealthyPanel(showLoading = false)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        syncNotificationTopics()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -153,8 +166,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun subscribeToPushTopic() {
-        FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC)
+    private fun syncNotificationTopics() {
+        val messaging = FirebaseMessaging.getInstance()
+
+        messaging.unsubscribeFromTopic(OLD_FCM_TOPIC)
+
+        val salesEnabled = prefs.getBoolean(PREF_NOTIFY_SALES, true)
+        val cem1Enabled = prefs.getBoolean(PREF_NOTIFY_CEM1, true)
+
+        if (salesEnabled) messaging.subscribeToTopic(FCM_TOPIC_SALES)
+        else messaging.unsubscribeFromTopic(FCM_TOPIC_SALES)
+
+        if (cem1Enabled) messaging.subscribeToTopic(FCM_TOPIC_CEM1)
+        else messaging.unsubscribeFromTopic(FCM_TOPIC_CEM1)
     }
 
     private fun startTruckAnimation() {
@@ -386,7 +410,7 @@ class MainActivity : AppCompatActivity() {
             c.instanceFollowRedirects = true
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.5")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.6")
             val code = c.responseCode
             c.disconnect()
             code in 200..299
@@ -403,7 +427,7 @@ class MainActivity : AppCompatActivity() {
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.5")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.6")
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
                     u.startsWith("https://") && u.contains(".trycloudflare.com")
