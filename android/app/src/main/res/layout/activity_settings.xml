@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/karcimsa_bg"
+    android:padding="22dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ayarlar"
+        android:textColor="@color/karcimsa_text"
+        android:textStyle="bold"
+        android:textSize="26sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Bildirimler"
+        android:textColor="@color/karcimsa_blue"
+        android:textStyle="bold"
+        android:textSize="16sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Telefonunuza hangi operasyon bildirimlerinin geleceğini seçin."
+        android:textColor="@color/karcimsa_muted"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#102231">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/salesNotificationsSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Satış Bildirimleri"
+            android:textColor="@color/karcimsa_text"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:checked="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="Satış araçları fabrikaya giriş yaptığında bildirim alın."
+            android:textColor="@color/karcimsa_muted"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#102231">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/cem1NotificationsSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Gelen CEM I Bildirimleri"
+            android:textColor="@color/karcimsa_text"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:checked="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="CEM I araçları fabrikaya giriş yaptığında bildirim alın."
+            android:textColor="@color/karcimsa_muted"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/settingsStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="Tercihleriniz otomatik kaydedilir."
+        android:textColor="@color/karcimsa_muted"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/closeSettingsButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Tamam" />
+
+</LinearLayout>
