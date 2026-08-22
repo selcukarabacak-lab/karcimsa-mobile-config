@@ -22,17 +22,32 @@ class KarcimsaMessagingService : FirebaseMessagingService() {
             ?: message.data["body"]
             ?: "Yeni operasyon bildirimi var."
 
-        showNotification(title, body)
+        val eventType = message.data["event_type"].orEmpty()
+        val plate = message.data["plate"].orEmpty()
+        val startTime = message.data["start_time"].orEmpty()
+
+        showNotification(title, body, eventType, plate, startTime)
     }
 
-    private fun showNotification(title: String, body: String) {
+    private fun showNotification(
+        title: String,
+        body: String,
+        eventType: String,
+        plate: String,
+        startTime: String
+    ) {
+        val requestCode = Random.nextInt(10000, 99999)
+
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(MainActivity.EXTRA_EVENT_TYPE, eventType)
+            putExtra(MainActivity.EXTRA_PLATE, plate)
+            putExtra(MainActivity.EXTRA_START_TIME, startTime)
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            requestCode,
             openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -51,6 +66,6 @@ class KarcimsaMessagingService : FirebaseMessagingService() {
             .build()
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(Random.nextInt(10000, 99999), notification)
+        manager.notify(requestCode, notification)
     }
 }
