@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.AudioAttributes
@@ -38,9 +39,16 @@ class MainActivity : AppCompatActivity() {
     private var reconnectJob: Job? = null
     private var mainFrameFailed = false
 
+    private var pendingFocusPlate: String? = null
+    private var pendingFocusEventType: String? = null
+    private var pendingFocusStartTime: String? = null
+
     companion object {
         const val VEHICLE_CHANNEL_ID = "karcimsa_vehicle_alerts"
         const val FCM_TOPIC = "karcimsa_ops"
+        const val EXTRA_EVENT_TYPE = "event_type"
+        const val EXTRA_PLATE = "plate"
+        const val EXTRA_START_TIME = "start_time"
         private const val NOTIFICATION_PERMISSION_REQUEST = 1101
         private const val RECONNECT_CHECK_MS = 8000L
     }
@@ -50,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        captureNotificationIntent(intent)
         createVehicleNotificationChannel()
         requestNotificationPermissionIfNeeded()
         subscribeToPushTopic()
@@ -73,6 +82,30 @@ class MainActivity : AppCompatActivity() {
         })
 
         resolveHealthyPanel(showLoading = true)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureNotificationIntent(intent)
+
+        if (initialPageLoaded) {
+            focusNotificationTarget()
+        } else {
+            resolveHealthyPanel(showLoading = false)
+        }
+    }
+
+    private fun captureNotificationIntent(sourceIntent: Intent?) {
+        val plate = sourceIntent?.getStringExtra(EXTRA_PLATE)?.trim().orEmpty()
+        val eventType = sourceIntent?.getStringExtra(EXTRA_EVENT_TYPE)?.trim().orEmpty()
+        val startTime = sourceIntent?.getStringExtra(EXTRA_START_TIME)?.trim().orEmpty()
+
+        if (plate.isNotBlank()) {
+            pendingFocusPlate = plate
+            pendingFocusEventType = eventType
+            pendingFocusStartTime = startTime
+        }
     }
 
     private fun createVehicleNotificationChannel() {
@@ -142,6 +175,7 @@ class MainActivity : AppCompatActivity() {
                     initialPageLoaded = true
                     reconnectJob?.cancel()
                     binding.statusPanel.visibility = View.GONE
+                    focusNotificationTarget()
                 }
             }
 
@@ -165,6 +199,90 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun focusNotificationTarget() {
+        val plate = pendingFocusPlate?.trim().orEmpty()
+        if (plate.isBlank()) return
+
+        val eventType = pendingFocusEventType.orEmpty()
+        val startTime = pendingFocusStartTime.orEmpty()
+
+        val plateJs = JSONObject.quote(plate)
+        val eventJs = JSONObject.quote(eventType)
+        val startJs = JSONObject.quote(startTime)
+
+        val script = """
+            (function(){
+              const targetPlate = $plateJs;
+              const eventType = $eventJs;
+              const startTime = $startJs;
+              let tries = 0;
+
+              function norm(v){
+                return String(v || '').replace(/\s+/g,' ').trim().toUpperCase();
+              }
+
+              function findTarget(){
+                tries++;
+                const target = norm(targetPlate);
+
+                const preferredSelectors = eventType === 'cem1_entry'
+                  ? ['#trucks .truck', '.truck', '[class*="truck"]', 'tr', '[class*="card"]']
+                  : ['[class*="waiting"]', '[class*="truck"]', '.truck', 'tr', '[class*="card"]'];
+
+                let candidates = [];
+                preferredSelectors.forEach(function(sel){
+                  try { candidates = candidates.concat(Array.from(document.querySelectorAll(sel))); } catch(e) {}
+                });
+
+                if (!candidates.length) {
+                  candidates = Array.from(document.querySelectorAll('div,li,tr'));
+                }
+
+                const seen = new Set();
+                candidates = candidates.filter(function(el){
+                  if (!el || seen.has(el)) return false;
+                  seen.add(el);
+                  return norm(el.innerText).includes(target);
+                });
+
+                let el = candidates.find(function(x){
+                  const txt = norm(x.innerText);
+                  return startTime ? txt.includes(norm(startTime)) : true;
+                }) || candidates[0];
+
+                if (!el) {
+                  if (tries < 14) setTimeout(findTarget, 500);
+                  return;
+                }
+
+                const row = el.closest('.truck, tr, [class*="waiting"], [class*="vehicle"], [class*="card"]') || el;
+                row.scrollIntoView({behavior:'smooth', block:'center'});
+
+                const oldOutline = row.style.outline;
+                const oldShadow = row.style.boxShadow;
+                const oldTransition = row.style.transition;
+                row.style.transition = 'outline .2s ease, box-shadow .2s ease';
+                row.style.outline = '3px solid rgba(255,193,7,.95)';
+                row.style.boxShadow = '0 0 0 6px rgba(255,193,7,.18), 0 8px 28px rgba(0,0,0,.35)';
+
+                setTimeout(function(){
+                  row.style.outline = oldOutline;
+                  row.style.boxShadow = oldShadow;
+                  row.style.transition = oldTransition;
+                }, 3500);
+              }
+
+              setTimeout(findTarget, 650);
+            })();
+        """.trimIndent()
+
+        binding.webView.evaluateJavascript(script, null)
+
+        pendingFocusPlate = null
+        pendingFocusEventType = null
+        pendingFocusStartTime = null
     }
 
     private fun handleMainFrameFailure() {
@@ -242,7 +360,7 @@ class MainActivity : AppCompatActivity() {
             c.instanceFollowRedirects = true
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.3")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.4")
             val code = c.responseCode
             c.disconnect()
             code in 200..299
@@ -259,7 +377,7 @@ class MainActivity : AppCompatActivity() {
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.3")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.4")
 
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
