@@ -9,6 +9,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.AudioAttributes
@@ -20,9 +21,12 @@ import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.webkit.*
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.karcimsa.mobile.databinding.ActivityMainBinding
@@ -64,12 +68,16 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_START_TIME = "start_time"
         private const val NOTIFICATION_PERMISSION_REQUEST = 1101
         private const val RECONNECT_CHECK_MS = 6000L
+        private const val STATE_CURRENT_PANEL_URL = "state_current_panel_url"
+        private const val STATE_INITIAL_PAGE_LOADED = "state_initial_page_loaded"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupSafeArea()
 
         captureNotificationIntent(intent)
         createVehicleNotificationChannel()
@@ -81,10 +89,15 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
-        binding.webView.clearCache(true)
-        binding.webView.clearHistory()
-        binding.swipeRefresh.visibility = View.INVISIBLE
-        binding.webView.visibility = View.INVISIBLE
+        val restoredWebView = savedInstanceState != null &&
+            binding.webView.restoreState(savedInstanceState) != null
+
+        if (!restoredWebView) {
+            binding.webView.clearCache(true)
+            binding.webView.clearHistory()
+            binding.swipeRefresh.visibility = View.INVISIBLE
+            binding.webView.visibility = View.INVISIBLE
+        }
 
         binding.swipeRefresh.setOnRefreshListener {
             binding.swipeRefresh.isRefreshing = false
@@ -102,8 +115,19 @@ class MainActivity : AppCompatActivity() {
         })
 
         applyKeepScreenOnPreference()
-        showLoading()
-        resolveHealthyPanel(showLoading = false)
+
+        if (restoredWebView) {
+            currentPanelUrl = savedInstanceState?.getString(STATE_CURRENT_PANEL_URL)
+            initialPageLoaded = savedInstanceState?.getBoolean(STATE_INITIAL_PAGE_LOADED, true) ?: true
+            stopTruckAnimation()
+            binding.statusPanel.visibility = View.GONE
+            binding.swipeRefresh.visibility = View.VISIBLE
+            binding.webView.visibility = View.VISIBLE
+            binding.root.post { notifyWebPageResized() }
+        } else {
+            showLoading()
+            resolveHealthyPanel(showLoading = false)
+        }
     }
 
     override fun onResume() {
@@ -123,6 +147,32 @@ class MainActivity : AppCompatActivity() {
         } else {
             resolveHealthyPanel(showLoading = true)
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ViewCompat.requestApplyInsets(binding.root)
+        binding.root.post {
+            binding.webView.requestLayout()
+            if (initialPageLoaded) notifyWebPageResized()
+        }
+    }
+
+    private fun setupSafeArea() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, windowInsets ->
+            val safeInsets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                safeInsets.left,
+                safeInsets.top,
+                safeInsets.right,
+                safeInsets.bottom
+            )
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun applyKeepScreenOnPreference() {
@@ -262,6 +312,7 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_NO_CACHE
+            layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
         }
 
         binding.webView.webChromeClient = WebChromeClient()
@@ -283,6 +334,7 @@ class MainActivity : AppCompatActivity() {
                     binding.statusPanel.visibility = View.GONE
                     binding.swipeRefresh.visibility = View.VISIBLE
                     binding.webView.visibility = View.VISIBLE
+                    notifyWebPageResized()
                     focusNotificationTarget()
                 }
             }
@@ -445,7 +497,7 @@ class MainActivity : AppCompatActivity() {
             c.instanceFollowRedirects = true
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.9")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/${BuildConfig.VERSION_NAME}")
             val code = c.responseCode
             c.disconnect()
             code in 200..299
@@ -462,7 +514,7 @@ class MainActivity : AppCompatActivity() {
             c.useCaches = false
             c.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
             c.setRequestProperty("Pragma", "no-cache")
-            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/1.1.9")
+            c.setRequestProperty("User-Agent", "KARCIMSA-Mobile/${BuildConfig.VERSION_NAME}")
             c.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).optString("url").trim().takeIf { u ->
                     u.startsWith("https://") && u.contains(".trycloudflare.com")
@@ -497,6 +549,20 @@ class MainActivity : AppCompatActivity() {
         binding.retryButton.visibility = View.GONE
         binding.statusPanel.visibility = View.VISIBLE
         startTruckAnimation()
+    }
+
+    private fun notifyWebPageResized() {
+        binding.webView.evaluateJavascript(
+            "(function(){window.dispatchEvent(new Event('resize'));window.dispatchEvent(new Event('orientationchange'));})();",
+            null
+        )
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_CURRENT_PANEL_URL, currentPanelUrl)
+        outState.putBoolean(STATE_INITIAL_PAGE_LOADED, initialPageLoaded)
+        binding.webView.saveState(outState)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
