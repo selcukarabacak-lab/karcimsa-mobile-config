@@ -1,8 +1,12 @@
 package com.karcimsa.mobile
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.karcimsa.mobile.databinding.ActivitySettingsBinding
 
@@ -22,9 +26,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupSafeArea()
 
         binding.salesNotificationsSwitch.isChecked = prefs.getBoolean(PREF_NOTIFY_SALES, true)
         binding.cem1NotificationsSwitch.isChecked = prefs.getBoolean(PREF_NOTIFY_CEM1, true)
@@ -68,6 +74,28 @@ class SettingsActivity : AppCompatActivity() {
         binding.closeSettingsButton.setOnClickListener {
             finish()
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        ViewCompat.requestApplyInsets(binding.root)
+    }
+
+    private fun setupSafeArea() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, windowInsets ->
+            val safeInsets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                safeInsets.left,
+                safeInsets.top,
+                safeInsets.right,
+                safeInsets.bottom
+            )
+            windowInsets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun updateTopic(topic: String, enabled: Boolean, label: String) {
