@@ -31,15 +31,26 @@ object PushRegistration {
         messaging.isAutoInitEnabled = true
 
         messaging.token.addOnCompleteListener { tokenTask ->
-            val token = tokenTask.result.orEmpty()
-
-            if (!tokenTask.isSuccessful || token.isBlank()) {
+            if (!tokenTask.isSuccessful) {
                 finish(
                     prefs = prefs,
                     result = SyncResult(
                         success = false,
                         message = tokenTask.exception?.localizedMessage
                             ?: "Firebase cihaz kaydı alınamadı."
+                    ),
+                    onComplete = onComplete
+                )
+                return@addOnCompleteListener
+            }
+
+            val token = tokenTask.result.orEmpty()
+            if (token.isBlank()) {
+                finish(
+                    prefs = prefs,
+                    result = SyncResult(
+                        success = false,
+                        message = "Firebase cihaz kaydı boş döndü."
                     ),
                     onComplete = onComplete
                 )
