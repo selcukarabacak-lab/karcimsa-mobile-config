@@ -11,6 +11,11 @@ import kotlin.random.Random
 
 class KarcimsaMessagingService : FirebaseMessagingService() {
 
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        PushRegistration.sync(this)
+    }
+
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
