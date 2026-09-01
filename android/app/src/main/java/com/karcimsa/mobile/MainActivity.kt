@@ -78,6 +78,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupSafeArea()
+        updateInteractionForOrientation(resources.configuration)
 
         captureNotificationIntent(intent)
         createVehicleNotificationChannel()
@@ -151,6 +152,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        updateInteractionForOrientation(newConfig)
         ViewCompat.requestApplyInsets(binding.root)
         binding.root.post {
             binding.webView.requestLayout()
@@ -173,6 +175,12 @@ class MainActivity : AppCompatActivity() {
             windowInsets
         }
         ViewCompat.requestApplyInsets(binding.root)
+    }
+
+    private fun updateInteractionForOrientation(config: Configuration) {
+        val landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+        binding.swipeRefresh.isEnabled = !landscape
+        binding.webView.isVerticalScrollBarEnabled = true
     }
 
     private fun applyKeepScreenOnPreference() {
@@ -552,10 +560,73 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun notifyWebPageResized() {
-        binding.webView.evaluateJavascript(
-            "(function(){window.dispatchEvent(new Event('resize'));window.dispatchEvent(new Event('orientationchange'));})();",
-            null
-        )
+        val script = """
+            (function(){
+              var styleId = 'karcimsa-native-landscape-fix';
+              var style = document.getElementById(styleId);
+              if (!style) {
+                style = document.createElement('style');
+                style.id = styleId;
+                document.head.appendChild(style);
+              }
+              style.textContent = `
+                @media (orientation: landscape) and (max-height: 700px) {
+                  html {
+                    height: auto !important;
+                    min-height: 100% !important;
+                    max-height: none !important;
+                    overflow-y: auto !important;
+                  }
+
+                  body:not(.sales-modal-open) {
+                    height: auto !important;
+                    min-height: 100% !important;
+                    max-height: none !important;
+                    overflow-y: auto !important;
+                    overscroll-behavior-y: auto !important;
+                  }
+
+                  body:not(.sales-modal-open) .container {
+                    width: 96% !important;
+                    height: auto !important;
+                    min-height: 100% !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    padding-top: 12px !important;
+                    padding-bottom: max(36px, env(safe-area-inset-bottom)) !important;
+                  }
+
+                  body:not(.sales-modal-open) .silo-sticky-section {
+                    position: relative !important;
+                    top: auto !important;
+                    z-index: auto !important;
+                    height: auto !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                  }
+
+                  body:not(.sales-modal-open) .silos,
+                  body:not(.sales-modal-open) .silo-card,
+                  body:not(.sales-modal-open) .trucks-section,
+                  body:not(.sales-modal-open) .truck-panel {
+                    height: auto !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                  }
+                }
+              `;
+              window.dispatchEvent(new Event('resize'));
+              window.dispatchEvent(new Event('orientationchange'));
+              if (document.scrollingElement) {
+                document.scrollingElement.style.overflowY = 'auto';
+              }
+              setTimeout(function(){
+                window.dispatchEvent(new Event('resize'));
+              }, 120);
+            })();
+        """.trimIndent()
+
+        binding.webView.evaluateJavascript(script, null)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
