@@ -9,6 +9,7 @@
         android:label="KARÇİMSA Silo Operasyon"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:resizeableActivity="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.KarcimsaMobile">
 
@@ -26,9 +27,13 @@
 
         <activity
             android:name=".SettingsActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
             android:exported="false" />
 
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
