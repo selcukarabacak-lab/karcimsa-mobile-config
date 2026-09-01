@@ -28,7 +28,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.firebase.messaging.FirebaseMessaging
 import com.karcimsa.mobile.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -260,18 +259,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncNotificationTopics() {
-        val messaging = FirebaseMessaging.getInstance()
+        PushRegistration.sync(this)
+    }
 
-        messaging.unsubscribeFromTopic(OLD_FCM_TOPIC)
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        val salesEnabled = prefs.getBoolean(PREF_NOTIFY_SALES, true)
-        val cem1Enabled = prefs.getBoolean(PREF_NOTIFY_CEM1, true)
-
-        if (salesEnabled) messaging.subscribeToTopic(FCM_TOPIC_SALES)
-        else messaging.unsubscribeFromTopic(FCM_TOPIC_SALES)
-
-        if (cem1Enabled) messaging.subscribeToTopic(FCM_TOPIC_CEM1)
-        else messaging.unsubscribeFromTopic(FCM_TOPIC_CEM1)
+        if (
+            requestCode == NOTIFICATION_PERMISSION_REQUEST &&
+            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+        ) {
+            PushRegistration.sync(this)
+        }
     }
 
     private fun startTruckAnimation() {

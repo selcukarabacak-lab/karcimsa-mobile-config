@@ -115,6 +115,26 @@
                 android:text="CEM I araçları fabrikaya giriş yaptığında bildirim alın."
                 android:textColor="@color/karcimsa_muted"
                 android:textSize="12sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="15dp"
+                android:layout_marginBottom="15dp"
+                android:background="#203B4D" />
+
+            <TextView
+                android:id="@+id/repairNotificationsRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="Bildirim Bağlantısını Onar  ›"
+                android:textColor="@color/karcimsa_text"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:clickable="true"
+                android:focusable="true" />
         </LinearLayout>
 
         <TextView
