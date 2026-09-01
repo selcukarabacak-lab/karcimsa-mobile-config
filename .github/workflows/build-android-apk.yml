@@ -3,7 +3,7 @@ name: Build KARÇİMSA Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "fix/1.1.9.2-landscape-scroll" ]
+    branches: [ "main" ]
     paths:
       - "android/**"
       - ".github/workflows/build-android-apk.yml"
