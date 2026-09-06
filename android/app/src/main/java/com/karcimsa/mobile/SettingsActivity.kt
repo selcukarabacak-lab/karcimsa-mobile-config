@@ -42,6 +42,21 @@ class SettingsActivity : AppCompatActivity() {
             prefs.getBoolean(PushRegistration.PREF_NOTIFY_SALES, true)
         binding.cem1NotificationsSwitch.isChecked =
             prefs.getBoolean(PushRegistration.PREF_NOTIFY_CEM1, true)
+        binding.factoryStartupNotificationsSwitch.isChecked =
+            prefs.getBoolean(
+                PushRegistration.PREF_NOTIFY_FACTORY_STARTUP,
+                true
+            )
+        binding.factoryPlannedStopNotificationsSwitch.isChecked =
+            prefs.getBoolean(
+                PushRegistration.PREF_NOTIFY_FACTORY_PLANNED_STOP,
+                true
+            )
+        binding.factoryUnplannedStopNotificationsSwitch.isChecked =
+            prefs.getBoolean(
+                PushRegistration.PREF_NOTIFY_FACTORY_UNPLANNED_STOP,
+                true
+            )
         binding.keepScreenOnSwitch.isChecked =
             prefs.getBoolean(PREF_KEEP_SCREEN_ON, false)
         binding.versionText.text = "Sürüm ${BuildConfig.VERSION_NAME}"
@@ -58,6 +73,27 @@ class SettingsActivity : AppCompatActivity() {
                 .putBoolean(PushRegistration.PREF_NOTIFY_CEM1, enabled)
                 .apply()
             updateTopic(enabled, "CEM I bildirimleri")
+        }
+
+        binding.factoryStartupNotificationsSwitch.setOnCheckedChangeListener { _, enabled ->
+            prefs.edit()
+                .putBoolean(PushRegistration.PREF_NOTIFY_FACTORY_STARTUP, enabled)
+                .apply()
+            updateTopic(enabled, "Devreye alma bildirimleri")
+        }
+
+        binding.factoryPlannedStopNotificationsSwitch.setOnCheckedChangeListener { _, enabled ->
+            prefs.edit()
+                .putBoolean(PushRegistration.PREF_NOTIFY_FACTORY_PLANNED_STOP, enabled)
+                .apply()
+            updateTopic(enabled, "Planlı duruş bildirimleri")
+        }
+
+        binding.factoryUnplannedStopNotificationsSwitch.setOnCheckedChangeListener { _, enabled ->
+            prefs.edit()
+                .putBoolean(PushRegistration.PREF_NOTIFY_FACTORY_UNPLANNED_STOP, enabled)
+                .apply()
+            updateTopic(enabled, "Arıza ve plansız duruş bildirimleri")
         }
 
         binding.repairNotificationsRow.setOnClickListener {

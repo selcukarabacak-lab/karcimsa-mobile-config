@@ -9,8 +9,14 @@ object PushRegistration {
     const val OLD_TOPIC = "karcimsa_ops"
     const val TOPIC_SALES = "karcimsa_sales"
     const val TOPIC_CEM1 = "karcimsa_cem1"
+    const val TOPIC_FACTORY_STARTUP = "karcimsa_factory_startup"
+    const val TOPIC_FACTORY_PLANNED_STOP = "karcimsa_factory_planned_stop"
+    const val TOPIC_FACTORY_UNPLANNED_STOP = "karcimsa_factory_unplanned_stop"
     const val PREF_NOTIFY_SALES = "notify_sales"
     const val PREF_NOTIFY_CEM1 = "notify_cem1"
+    const val PREF_NOTIFY_FACTORY_STARTUP = "notify_factory_startup"
+    const val PREF_NOTIFY_FACTORY_PLANNED_STOP = "notify_factory_planned_stop"
+    const val PREF_NOTIFY_FACTORY_UNPLANNED_STOP = "notify_factory_unplanned_stop"
     const val PREF_REGISTRATION_OK = "push_registration_ok"
     const val PREF_REGISTRATION_AT = "push_registration_at"
     const val PREF_REGISTRATION_ERROR = "push_registration_error"
@@ -59,11 +65,32 @@ object PushRegistration {
 
             val salesEnabled = prefs.getBoolean(PREF_NOTIFY_SALES, true)
             val cem1Enabled = prefs.getBoolean(PREF_NOTIFY_CEM1, true)
+            val factoryStartupEnabled =
+                prefs.getBoolean(PREF_NOTIFY_FACTORY_STARTUP, true)
+            val factoryPlannedStopEnabled =
+                prefs.getBoolean(PREF_NOTIFY_FACTORY_PLANNED_STOP, true)
+            val factoryUnplannedStopEnabled =
+                prefs.getBoolean(PREF_NOTIFY_FACTORY_UNPLANNED_STOP, true)
 
             val operations = listOf(
                 messaging.unsubscribeFromTopic(OLD_TOPIC),
                 topicOperation(messaging, TOPIC_SALES, salesEnabled),
-                topicOperation(messaging, TOPIC_CEM1, cem1Enabled)
+                topicOperation(messaging, TOPIC_CEM1, cem1Enabled),
+                topicOperation(
+                    messaging,
+                    TOPIC_FACTORY_STARTUP,
+                    factoryStartupEnabled
+                ),
+                topicOperation(
+                    messaging,
+                    TOPIC_FACTORY_PLANNED_STOP,
+                    factoryPlannedStopEnabled
+                ),
+                topicOperation(
+                    messaging,
+                    TOPIC_FACTORY_UNPLANNED_STOP,
+                    factoryUnplannedStopEnabled
+                )
             )
 
             completeWhenAll(

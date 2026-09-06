@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var reconnectJob: Job? = null
     private var mainFrameFailed = false
     private var truckAnimator: AnimatorSet? = null
+    private var pageAllowsSwipeRefresh = true
 
     private var pendingFocusPlate: String? = null
     private var pendingFocusEventType: String? = null
@@ -178,8 +179,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateInteractionForOrientation(config: Configuration) {
         val landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
-        binding.swipeRefresh.isEnabled = !landscape
+        binding.swipeRefresh.isEnabled = pageAllowsSwipeRefresh && !landscape
         binding.webView.isVerticalScrollBarEnabled = true
+    }
+
+    private inner class KarcimsaNativeBridge {
+        @JavascriptInterface
+        fun setSwipeRefreshEnabled(enabled: Boolean) {
+            runOnUiThread {
+                pageAllowsSwipeRefresh = enabled
+                updateInteractionForOrientation(resources.configuration)
+            }
+        }
     }
 
     private fun applyKeepScreenOnPreference() {
@@ -236,7 +247,7 @@ class MainActivity : AppCompatActivity() {
             "KARÇİMSA Araç Bildirimleri",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "CEM I ve satış aracı giriş bildirimleri"
+            description = "CEM I, satış aracı ve fabrika durum bildirimleri"
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 90, 55, 120)
             setSound(soundUri, audioAttributes)
@@ -325,6 +336,11 @@ class MainActivity : AppCompatActivity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
             layoutAlgorithm = WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
         }
+
+        binding.webView.addJavascriptInterface(
+            KarcimsaNativeBridge(),
+            "KarcimsaNative"
+        )
 
         binding.webView.webChromeClient = WebChromeClient()
         binding.webView.webViewClient = object : WebViewClient() {
